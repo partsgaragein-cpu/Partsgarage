@@ -45,6 +45,16 @@ body { background: var(--bg); color: var(--text); }
 .yl-btn-ghost { background: transparent; color: var(--text-muted); font-weight: 600; font-size: 13px; border: 1px solid var(--border); border-radius: 7px; padding: 10px 16px; cursor: pointer; }
 .yl-btn-whatsapp { background: var(--whatsapp); color: #0A1F0F; font-weight: 600; font-size: 13px; border: none; border-radius: 7px; padding: 10px 16px; cursor: pointer; }
 .yl-link-btn { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 0; }
+/* Buttons/links styled as buttons should never show a text underline, whether they're
+   a real <button> or a <Link> rendered to look like one. */
+.yl-btn-primary, .yl-btn-ghost, .yl-btn-whatsapp, .yl-link-btn { text-decoration: none; display: inline-block; }
+/* The topbar title used an inline marginLeft:30 on every page to clear the mobile
+   hamburger button — but that button is hidden on desktop, so the gap was wrong there.
+   Override it here instead of touching every page: 0 on desktop, restored on mobile. */
+.yl-topbar h1 { margin-left: 0 !important; }
+@media (max-width: 860px) {
+  .yl-topbar h1 { margin-left: 40px !important; }
+}
 .yl-icon-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: var(--text-faint); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .yl-icon-btn:hover { background: var(--surface-2); color: var(--text); }
 .yl-dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1.5px dashed var(--border); border-radius: 8px; padding: 26px 16px; cursor: pointer; }
