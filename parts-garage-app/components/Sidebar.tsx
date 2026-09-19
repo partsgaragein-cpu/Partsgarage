@@ -4,23 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { LayoutDashboard, Car, Wrench, FileText, Wallet, Receipt, TrendingUp, BarChart3 } from "lucide-react";
 
 const NAV_GROUPS = [
   { label: "Operations", items: [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/vehicles", label: "Vehicles" },
-    { href: "/parts", label: "Parts" },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/vehicles", label: "Vehicles", icon: Car },
+    { href: "/parts", label: "Parts", icon: Wrench },
   ]},
   { label: "Billing", items: [
-    { href: "/invoices", label: "Invoices" },
-    { href: "/payments", label: "Payments" },
+    { href: "/invoices", label: "Invoices", icon: FileText },
+    { href: "/payments", label: "Payments", icon: Wallet },
   ]},
   { label: "Financials", items: [
-    { href: "/expenses", label: "Expenses" },
-    { href: "/profit", label: "Profit & Recovery" },
+    { href: "/expenses", label: "Expenses", icon: Receipt },
+    { href: "/profit", label: "Profit & Recovery", icon: TrendingUp },
   ]},
   { label: "Insights", items: [
-    { href: "/reports", label: "Reports" },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
   ]},
 ];
 
@@ -53,7 +54,10 @@ export default function Sidebar() {
         />
       )}
       <div className={`yl-sidebar no-print${open ? " open" : ""}`}>
-        <div style={{ padding: "20px 20px 18px", borderBottom: "1px solid var(--border)" }}>
+        <div className="yl-row yl-items-center yl-gap-2" style={{ padding: "20px 20px 18px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Car size={16} color="var(--bg)" strokeWidth={2.5} />
+          </div>
           <span className="yl-display yl-fw-600" style={{ fontSize: 16, color: "var(--text)" }}>Parts Garage</span>
         </div>
         <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
@@ -64,6 +68,7 @@ export default function Sidebar() {
               </div>
               {group.items.map((item) => {
                 const isActive = pathname.startsWith(item.href);
+                const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
@@ -78,6 +83,7 @@ export default function Sidebar() {
                       borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
                     }}
                   >
+                    <Icon size={15} strokeWidth={2} style={{ flexShrink: 0 }} />
                     {item.label}
                   </Link>
                 );
