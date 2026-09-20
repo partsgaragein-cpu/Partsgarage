@@ -20,7 +20,10 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError("Incorrect email or password.");
+      // Showing the real Supabase error here (not a generic "wrong password"
+      // message) so a misconfigured URL/key shows up clearly instead of being
+      // mistaken for a genuinely wrong password.
+      setError(`${error.message} (${error.status ?? "no status"})`);
       setLoading(false);
       return;
     }
