@@ -122,3 +122,13 @@ export const COMPANY = {
   state: process.env.NEXT_PUBLIC_COMPANY_STATE || "",
   address: process.env.NEXT_PUBLIC_COMPANY_ADDRESS || "",
 };
+
+// A part is "priority" if it's high-value or matches a commonly-critical
+// component keyword — used to flag it with a star on the parts list and
+// pull it into the Physical Stock Verification checklist in Reports.
+export const PRIORITY_KEYWORDS = [
+  "engine", "gearbox", "ecu", "turbo", "injector", "catalytic",
+  "headlight", "steering rack", "alloy wheel",
+];
+export const isPriorityPart = (name: string, category: string) =>
+  PRIORITY_KEYWORDS.some((k) => name.toLowerCase().includes(k) || category.toLowerCase().includes(k));

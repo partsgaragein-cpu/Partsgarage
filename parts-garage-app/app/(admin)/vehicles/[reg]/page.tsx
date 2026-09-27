@@ -48,6 +48,15 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
           </div>
         </div>
 
+        <div className="yl-card" style={{ padding: "18px 22px", marginBottom: 20 }}>
+          <div className="yl-grid-4">
+            <div><div className="yl-mini-label">VIN / Chassis No.</div><div className="yl-mono" style={{ fontSize: 12.5, color: "var(--text)" }}>{vehicle.vin || "—"}</div></div>
+            <div><div className="yl-mini-label">Fuel Type</div><div style={{ fontSize: 13, color: "var(--text)" }}>{vehicle.fuel_type || "—"}</div></div>
+            <div><div className="yl-mini-label">Transmission</div><div style={{ fontSize: 13, color: "var(--text)" }}>{vehicle.transmission || "—"}</div></div>
+            <div><div className="yl-mini-label">Purchase Date</div><div style={{ fontSize: 13, color: "var(--text)" }}>{vehicle.purchase_date ? new Date(vehicle.purchase_date).toLocaleDateString() : "—"}</div></div>
+          </div>
+        </div>
+
         <h2 className="yl-section-label" style={{ marginBottom: 12, display: "block" }}>Media ({(media || []).length})</h2>
         <div className="yl-grid-4" style={{ marginBottom: 24 }}>
           {(media || []).map((m) => (
