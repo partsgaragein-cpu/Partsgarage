@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToR2 } from "@/lib/uploadMedia";
+import { uploadFilesToStorage } from "@/lib/uploadMedia";
 import MediaUploader from "@/components/MediaUploader";
 
 export default function AddPartMedia({ partId }: { partId: string }) {
@@ -16,9 +16,9 @@ export default function AddPartMedia({ partId }: { partId: string }) {
     if (files.length === 0) return;
     setUploading(true);
     try {
-      const uploaded = await uploadFilesToR2(files, `parts/${partId}`);
+      const uploaded = await uploadFilesToStorage(files, `parts/${partId}`);
       await supabase.from("media").insert(
-        uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.publicUrl }))
+        uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.storagePath }))
       );
       setFiles([]);
       router.refresh();

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { r2Client, R2_BUCKET } from "@/lib/r2";
+import { putObject } from "@/lib/storage";
 
 // Every table that has to survive a "someone fat-fingered a delete" day.
 const TABLES = [
@@ -51,18 +50,11 @@ export async function GET(req: NextRequest) {
   }
 
   // One new file per day, named by date. Nothing is ever deleted or
-  // overwritten here — every day's backup stays in R2 permanently.
+  // overwritten here — every day's backup stays in the (private) bucket permanently.
   const dateStr = new Date().toISOString().split("T")[0]; // e.g. 2026-09-04
   const key = `backups/${dateStr}.json`;
 
-  await r2Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      Body: JSON.stringify(backup, null, 2),
-      ContentType: "application/json",
-    })
-  );
+  await putObject(key, JSON.stringify(backup, null, 2), "application/json");
 
   return NextResponse.json({
     ok: true,

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PlateBadge } from "@/components/Badges";
 import MediaGrid from "@/components/MediaGrid";
 import PublicPartCard from "@/components/PublicPartCard";
+import { signMedia } from "@/lib/storage";
 import { PublicPart } from "@/lib/types";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -15,16 +16,18 @@ export default async function PublicGalleryPage({ params }: { params: { reg: str
   const { data: vehicle } = await supabase.from("vehicles").select("*").eq("registration_number", reg).single();
   if (!vehicle) notFound();
 
-  const [{ data: media }, { data: publicParts }] = await Promise.all([
+  const [{ data: mediaRaw }, { data: publicParts }] = await Promise.all([
     supabase.from("media").select("*").eq("vehicle_id", vehicle.id),
     supabase.from("parts_public").select("*").eq("vehicle_id", vehicle.id),
   ]);
 
+  const media = await signMedia(mediaRaw);
   const parts = (publicParts || []) as PublicPart[];
   const partIds = parts.map((p) => p.id);
-  const { data: partMedia } = partIds.length > 0
+  const { data: partMediaRaw } = partIds.length > 0
     ? await supabase.from("media").select("*").in("part_id", partIds)
     : { data: [] as any[] };
+  const partMedia = await signMedia(partMediaRaw);
 
   const mediaByPart = new Map<string, any[]>();
   (partMedia || []).forEach((m) => {

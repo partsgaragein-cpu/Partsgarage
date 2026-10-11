@@ -4,6 +4,7 @@ import EditPartForm from "@/components/EditPartForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddPartMedia from "./AddPartMedia";
+import { signMedia } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,8 @@ export default async function PartDetailPage({ params }: { params: { id: string 
   ]);
   if (!part) notFound();
 
-  const { data: media } = await supabase.from("media").select("*").eq("part_id", id);
+  const { data: mediaRaw } = await supabase.from("media").select("*").eq("part_id", id);
+  const media = await signMedia(mediaRaw);
 
   return (
     <div>

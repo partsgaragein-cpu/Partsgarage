@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToR2 } from "@/lib/uploadMedia";
+import { uploadFilesToStorage } from "@/lib/uploadMedia";
 import { CATEGORIES, CONDITIONS, PART_STATUSES, Vehicle } from "@/lib/types";
 import MediaUploader from "@/components/MediaUploader";
 
@@ -55,9 +55,9 @@ function NewPartForm() {
 
     if (files.length > 0) {
       try {
-        const uploaded = await uploadFilesToR2(files, `parts/${partId}`);
+        const uploaded = await uploadFilesToStorage(files, `parts/${partId}`);
         await supabase.from("media").insert(
-          uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.publicUrl }))
+          uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.storagePath }))
         );
       } catch {
         // Part is already saved — media upload failure shouldn't block navigation.

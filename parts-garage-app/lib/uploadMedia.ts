@@ -1,12 +1,12 @@
 export type UploadedFile = {
-  publicUrl: string;
+  storagePath: string; // the file's key in the bucket — this is what we save in the media table
   type: "image" | "video";
   label: string;
 };
 
-// Uploads one file directly to R2 via a presigned URL, and returns
-// the public URL to store in Supabase's `media` table.
-export async function uploadFileToR2(file: File, folder: string): Promise<UploadedFile> {
+// Uploads one file directly to the private bucket via a presigned URL, and
+// returns the key to store in Supabase's `media` table.
+export async function uploadFileToStorage(file: File, folder: string): Promise<UploadedFile> {
   // 1. Ask our own API for a signed upload URL (small, fast request)
   const res = await fetch("/api/upload-url", {
     method: "POST",
@@ -15,9 +15,9 @@ export async function uploadFileToR2(file: File, folder: string): Promise<Upload
   });
 
   if (!res.ok) throw new Error("Could not get an upload URL");
-  const { uploadUrl, publicUrl } = await res.json();
+  const { uploadUrl, key } = await res.json();
 
-  // 2. Upload the actual file bytes straight to R2 — never touches our server
+  // 2. Upload the actual file bytes straight to storage — never touches our server
   const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": file.type },
@@ -27,12 +27,12 @@ export async function uploadFileToR2(file: File, folder: string): Promise<Upload
   if (!uploadRes.ok) throw new Error("Upload to storage failed");
 
   return {
-    publicUrl,
+    storagePath: key,
     type: file.type.startsWith("video") ? "video" : "image",
     label: file.name,
   };
 }
 
-export async function uploadFilesToR2(files: File[], folder: string): Promise<UploadedFile[]> {
-  return Promise.all(files.map((f) => uploadFileToR2(f, folder)));
+export async function uploadFilesToStorage(files: File[], folder: string): Promise<UploadedFile[]> {
+  return Promise.all(files.map((f) => uploadFileToStorage(f, folder)));
 }

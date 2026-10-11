@@ -4,6 +4,7 @@ import { inr } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ShareButton from "./ShareButton";
+import { signMedia } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,13 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
   const { data: vehicle } = await supabase.from("vehicles").select("*").eq("registration_number", reg).single();
   if (!vehicle) notFound();
 
-  const [{ data: media }, { data: parts }, { data: expenses }] = await Promise.all([
+  const [{ data: mediaRaw }, { data: parts }, { data: expenses }] = await Promise.all([
     supabase.from("media").select("*").eq("vehicle_id", vehicle.id),
     supabase.from("parts").select("*").eq("vehicle_id", vehicle.id).eq("archived", false),
     supabase.from("expenses").select("*").eq("vehicle_id", vehicle.id),
   ]);
+
+  const media = await signMedia(mediaRaw);
 
   const investment = (expenses || []).reduce((s, e) => s + e.amount, 0);
   const revenue = (parts || []).filter((p) => p.status === "Sold").reduce((s, p) => s + (p.actual_price || 0), 0);

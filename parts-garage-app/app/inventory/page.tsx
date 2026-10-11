@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { PlateBadge } from "@/components/Badges";
 import PublicPartCard from "@/components/PublicPartCard";
+import { signMedia } from "@/lib/storage";
 import { PublicPart } from "@/lib/types";
 import Link from "next/link";
 import type { CSSProperties } from "react";
@@ -19,7 +20,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
   const standaloneParts = allParts.filter((p) => !p.vehicle_id);
   const vehicleIds = Array.from(new Set(allParts.filter((p) => p.vehicle_id).map((p) => p.vehicle_id!)));
 
-  const [{ data: vehicles }, { data: vehicleMedia }, { data: standaloneMedia }] = await Promise.all([
+  const [{ data: vehicles }, { data: vehicleMediaRaw }, { data: standaloneMediaRaw }] = await Promise.all([
     vehicleIds.length > 0
       ? supabase.from("vehicles").select("*").in("id", vehicleIds)
       : Promise.resolve({ data: [] as any[] }),
@@ -30,6 +31,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
       ? supabase.from("media").select("*").in("part_id", standaloneParts.map((p) => p.id))
       : Promise.resolve({ data: [] as any[] }),
   ]);
+
+  // Media is stored as bucket keys; swap each for a temporary signed link before rendering.
+  const vehicleMedia = await signMedia(vehicleMediaRaw);
+  const standaloneMedia = await signMedia(standaloneMediaRaw);
 
   const mediaByVehicle = new Map<string, any[]>();
   (vehicleMedia || []).forEach((m) => {

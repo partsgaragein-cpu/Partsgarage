@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToR2 } from "@/lib/uploadMedia";
+import { uploadFilesToStorage } from "@/lib/uploadMedia";
 import { FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES } from "@/lib/types";
 
 export default function NewVehiclePage() {
@@ -41,9 +41,9 @@ export default function NewVehiclePage() {
 
     if (files.length > 0) {
       try {
-        const uploaded = await uploadFilesToR2(files, `vehicles/${vehicle.registration_number}`);
+        const uploaded = await uploadFilesToStorage(files, `vehicles/${vehicle.registration_number}`);
         await supabase.from("media").insert(
-          uploaded.map((u) => ({ vehicle_id: vehicle.id, type: u.type, storage_path: u.publicUrl }))
+          uploaded.map((u) => ({ vehicle_id: vehicle.id, type: u.type, storage_path: u.storagePath }))
         );
       } catch {
         // Vehicle is already saved — media upload failure shouldn't block navigation

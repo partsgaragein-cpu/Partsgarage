@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { VehicleCell, StatusBadge } from "@/components/Badges";
 import ArchivePartButton from "@/components/ArchivePartButton";
+import { signKey } from "@/lib/storage";
 import { inr, isPriorityPart } from "@/lib/types";
 import Link from "next/link";
 
@@ -32,7 +33,15 @@ export default async function PartsPage({ searchParams }: { searchParams: { sold
     query = query.or(orParts.join(","));
   }
 
-  const { data: parts } = await query;
+  const { data: rawParts } = await query;
+
+  // Only the first photo of each part is shown as a thumbnail, so only that one needs a signed link.
+  const parts = await Promise.all(
+    (rawParts || []).map(async (p: any) => ({
+      ...p,
+      media: p.media?.length ? [{ ...p.media[0], storage_path: await signKey(p.media[0].storage_path) }] : [],
+    }))
+  );
 
   const qs = (overrides: Record<string, string>) => {
     const params = new URLSearchParams();
