@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToStorage } from "@/lib/uploadMedia";
+import { uploadAndRecordMedia } from "@/lib/uploadMedia";
 import { CATEGORIES, CONDITIONS, PART_STATUSES, Vehicle } from "@/lib/types";
 import MediaUploader from "@/components/MediaUploader";
 
@@ -24,6 +24,9 @@ function NewPartForm() {
   const [status, setStatus] = useState("Available"); const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  // Set when the part saved but its photos did not — we stay on the page and say why.
+  const [savedPartId, setSavedPartId] = useState("");
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     supabase.from("vehicles").select("*").order("created_at", { ascending: false }).then(({ data }) => {
@@ -55,13 +58,14 @@ function NewPartForm() {
 
     if (files.length > 0) {
       try {
-        const uploaded = await uploadFilesToStorage(files, `parts/${partId}`);
-        await supabase.from("media").insert(
-          uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.storagePath }))
-        );
-      } catch {
-        // Part is already saved — media upload failure shouldn't block navigation.
-        // More photos can always be added later from the part's detail page.
+        await uploadAndRecordMedia(supabase, files, `parts/${partId}`, { part_id: partId });
+      } catch (e: any) {
+        // The part itself is saved. Don't hide the photo problem — show it, and let
+        // them open the part (photos can be added again from its page).
+        setSavedPartId(partId);
+        setUploadError(e?.message || "The photos could not be uploaded.");
+        setSaving(false);
+        return;
       }
     }
 
@@ -119,9 +123,20 @@ function NewPartForm() {
 
       <MediaUploader files={files} setFiles={setFiles} />
 
-      <button onClick={handleSave} disabled={!name || saving} className="yl-btn-primary" style={{ width: "100%" }}>
-        {saving ? "Saving…" : "Save Part"}
-      </button>
+      {savedPartId ? (
+        <div>
+          <div style={{ fontSize: 12.5, color: "#E5484D", background: "rgba(229,72,77,0.08)", border: "1px solid rgba(229,72,77,0.3)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+            <strong>The part was saved, but its photos did not upload.</strong><br />{uploadError}
+          </div>
+          <button onClick={() => { router.push(`/parts/${savedPartId}`); router.refresh(); }} className="yl-btn-primary" style={{ width: "100%" }}>
+            Open part (add photos again from there)
+          </button>
+        </div>
+      ) : (
+        <button onClick={handleSave} disabled={!name || saving} className="yl-btn-primary" style={{ width: "100%" }}>
+          {saving ? (files.length > 0 ? "Saving & uploading…" : "Saving…") : "Save Part"}
+        </button>
+      )}
     </div>
   );
 }

@@ -4,6 +4,9 @@ import { inr } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ShareButton from "./ShareButton";
+import AddVehicleMedia from "./AddVehicleMedia";
+import EditVehicleForm from "@/components/EditVehicleForm";
+import RowLink from "@/components/RowLink";
 import { signMedia } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +63,8 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
           </div>
         </div>
 
+        <EditVehicleForm vehicle={vehicle} />
+
         <h2 className="yl-section-label" style={{ marginBottom: 12, display: "block" }}>Media ({(media || []).length})</h2>
         <div className="yl-grid-4" style={{ marginBottom: 24 }}>
           {(media || []).map((m) => (
@@ -75,6 +80,8 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
           {(!media || media.length === 0) && <div style={{ color: "var(--text-faint)", fontSize: 13 }}>No media uploaded yet.</div>}
         </div>
 
+        <AddVehicleMedia vehicleId={vehicle.id} reg={vehicle.registration_number} />
+
         <div className="yl-row yl-items-center yl-justify-between" style={{ marginBottom: 12 }}>
           <h2 className="yl-section-label">Parts from this Vehicle ({(parts || []).length})</h2>
           <Link href={`/parts/new?vehicle=${vehicle.registration_number}`} className="yl-link-btn">+ Add part</Link>
@@ -84,14 +91,14 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
             <thead><tr><th>Part ID</th><th>Name</th><th>Category</th><th>Expected</th><th>Actual</th><th>Status</th></tr></thead>
             <tbody>
               {(parts || []).map((p) => (
-                <tr key={p.id} className="yl-tr">
+                <RowLink key={p.id} href={`/parts/${p.id}`}>
                   <td className="yl-mono" style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{p.id}</td>
                   <td style={{ color: "var(--text)" }}>{p.name}</td>
                   <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{p.category}</td>
                   <td style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{inr(p.expected_price)}</td>
                   <td style={{ fontSize: 12.5, color: p.actual_price ? "var(--whatsapp)" : "var(--text-faint)" }}>{p.actual_price ? inr(p.actual_price) : "—"}</td>
                   <td><StatusBadge status={p.status} /></td>
-                </tr>
+                </RowLink>
               ))}
               {(!parts || parts.length === 0) && <tr><td colSpan={6} className="yl-empty">No parts recorded yet.</td></tr>}
             </tbody>

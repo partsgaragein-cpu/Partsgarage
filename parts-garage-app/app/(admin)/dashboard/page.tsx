@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { inr } from "@/lib/types";
 import { PlateBadge, StatusBadge } from "@/components/Badges";
+import RowLink from "@/components/RowLink";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -74,12 +75,12 @@ export default async function DashboardPage() {
             <thead><tr><th>Registration</th><th>Vehicle</th><th>Status</th><th>Added</th></tr></thead>
             <tbody>
               {v.slice(0, 5).map((vh) => (
-                <tr key={vh.id} className="yl-tr">
+                <RowLink key={vh.id} href={`/vehicles/${vh.registration_number}`}>
                   <td><Link href={`/vehicles/${vh.registration_number}`} style={{ textDecoration: "none" }}><PlateBadge reg={vh.registration_number} /></Link></td>
                   <td style={{ color: "var(--text)" }}>{vh.car_name}</td>
                   <td><StatusBadge status={vh.status} /></td>
                   <td style={{ color: "var(--text-faint)", fontSize: 12 }}>{new Date(vh.created_at).toLocaleDateString()}</td>
-                </tr>
+                </RowLink>
               ))}
               {v.length === 0 && <tr><td colSpan={4} className="yl-empty">No vehicles yet.</td></tr>}
             </tbody>

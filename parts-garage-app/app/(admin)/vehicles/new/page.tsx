@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToStorage } from "@/lib/uploadMedia";
+import { uploadAndRecordMedia } from "@/lib/uploadMedia";
+import MediaUploader from "@/components/MediaUploader";
 import { FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES } from "@/lib/types";
 
 export default function NewVehiclePage() {
@@ -16,6 +17,9 @@ export default function NewVehiclePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Set when the vehicle saved but its photos did not — we stay on the page and say why.
+  const [savedReg, setSavedReg] = useState("");
+  const [uploadError, setUploadError] = useState("");
 
   const handleSave = async () => {
     if (!reg || !make) return;
@@ -41,12 +45,14 @@ export default function NewVehiclePage() {
 
     if (files.length > 0) {
       try {
-        const uploaded = await uploadFilesToStorage(files, `vehicles/${vehicle.registration_number}`);
-        await supabase.from("media").insert(
-          uploaded.map((u) => ({ vehicle_id: vehicle.id, type: u.type, storage_path: u.storagePath }))
-        );
-      } catch {
-        // Vehicle is already saved — media upload failure shouldn't block navigation
+        await uploadAndRecordMedia(supabase, files, `vehicles/${vehicle.registration_number}`, { vehicle_id: vehicle.id });
+      } catch (e: any) {
+        // The vehicle itself is saved. Don't hide the photo problem — show it, and let
+        // them open the vehicle (photos can be added again from there).
+        setSavedReg(vehicle.registration_number);
+        setUploadError(e?.message || "The photos could not be uploaded.");
+        setSaving(false);
+        return;
       }
     }
 
@@ -80,18 +86,24 @@ export default function NewVehiclePage() {
           <div style={{ flex: 1 }}><label className="yl-label">Status</label><select value={status} onChange={(e) => setStatus(e.target.value)} className="yl-input" style={{ width: "100%" }}>{VEHICLE_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
         </div>
 
-        <label className="yl-label">Photos & Videos</label>
-        <label className="yl-dropzone" style={{ marginBottom: 20 }}>
-          <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Tap to upload — or drag files here</span>
-          <input type="file" multiple accept="image/*,video/*" style={{ display: "none" }} onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-        </label>
-        {files.length > 0 && <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 16 }}>{files.length} file(s) selected</div>}
+        <MediaUploader files={files} setFiles={setFiles} />
 
         {error && <div style={{ fontSize: 12.5, color: "#E5484D", marginBottom: 16 }}>{error}</div>}
 
-        <button onClick={handleSave} disabled={!reg || !make || saving} className="yl-btn-primary" style={{ width: "100%" }}>
-          {saving ? "Saving…" : "Save Vehicle"}
-        </button>
+        {savedReg ? (
+          <div>
+            <div style={{ fontSize: 12.5, color: "#E5484D", background: "rgba(229,72,77,0.08)", border: "1px solid rgba(229,72,77,0.3)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+              <strong>The vehicle was saved, but its photos did not upload.</strong><br />{uploadError}
+            </div>
+            <button onClick={() => { router.push(`/vehicles/${savedReg}`); router.refresh(); }} className="yl-btn-primary" style={{ width: "100%" }}>
+              Open vehicle (add photos again from there)
+            </button>
+          </div>
+        ) : (
+          <button onClick={handleSave} disabled={!reg || !make || saving} className="yl-btn-primary" style={{ width: "100%" }}>
+            {saving ? (files.length > 0 ? "Saving & uploading…" : "Saving…") : "Save Vehicle"}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ npm install
 Photos, videos and the daily database backups live in one **private** Backblaze B2 bucket. The first 10 GB is free and no credit card is needed for a private bucket.
 
 1. Create a bucket (e.g. `partsgarage-main`) and set **Files in Bucket are: Private**
-2. On the **Buckets** page, open the bucket's **CORS Rules** and choose *Share everything in this bucket with exactly one origin*, entering your site's address (e.g. `https://partsgarage-8foi.vercel.app`, no trailing slash) and applying it to the S3-compatible API. This is only needed so the browser is allowed to upload; viewing files never needs it. Add any custom domain here later too.
+2. **Browser uploads need a CORS rule that allows uploads.** Backblaze's one-click CORS presets only allow *viewing* files, so uploads fail with a generic "Failed to fetch". Don't use the presets. Instead, after the app is deployed with the B2 settings below, log in and open `/api/admin/storage-check?apply=1` on your site. It sets the correct rule on the bucket (using the app's own key) and runs a real upload test. Open `/api/admin/storage-check` any time to re-check; the first lines of the result say what is right or wrong in plain English. If you ever add a custom domain, open that page from the new domain with `?apply=1` so it is allowed too.
 3. **Application Keys → Add a New Application Key** → restrict it to that one bucket, Read and Write → copy the **keyID** and **applicationKey** immediately (the key is shown once)
 4. Note the bucket's **Endpoint** (e.g. `s3.eu-central-003.backblazeb2.com`)
 

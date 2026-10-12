@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFilesToStorage } from "@/lib/uploadMedia";
+import { uploadAndRecordMedia } from "@/lib/uploadMedia";
 import MediaUploader from "@/components/MediaUploader";
 
 export default function AddPartMedia({ partId }: { partId: string }) {
@@ -11,19 +11,19 @@ export default function AddPartMedia({ partId }: { partId: string }) {
   const supabase = createClient();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleUpload = async () => {
     if (files.length === 0) return;
     setUploading(true);
+    setError("");
     try {
-      const uploaded = await uploadFilesToStorage(files, `parts/${partId}`);
-      await supabase.from("media").insert(
-        uploaded.map((u) => ({ part_id: partId, type: u.type, storage_path: u.storagePath }))
-      );
+      await uploadAndRecordMedia(supabase, files, `parts/${partId}`, { part_id: partId });
       setFiles([]);
       router.refresh();
-    } catch {
-      // leave the picked files in place so the user can retry
+    } catch (e: any) {
+      // keep the picked files in place so the user can retry
+      setError(e?.message || "Upload failed.");
     }
     setUploading(false);
   };
@@ -31,6 +31,7 @@ export default function AddPartMedia({ partId }: { partId: string }) {
   return (
     <div style={{ marginTop: 12 }}>
       <MediaUploader files={files} setFiles={setFiles} label="Add more photos / videos" />
+      {error && <div style={{ fontSize: 12.5, color: "#E5484D", marginBottom: 12 }}>{error}</div>}
       {files.length > 0 && (
         <button onClick={handleUpload} disabled={uploading} className="yl-btn-primary">
           {uploading ? "Uploading…" : `Upload ${files.length} file(s)`}

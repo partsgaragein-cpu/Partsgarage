@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { PlateBadge, StatusBadge } from "@/components/Badges";
 import ShareInventoryButton from "@/components/ShareInventoryButton";
+import RowLink from "@/components/RowLink";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -24,12 +25,12 @@ export default async function VehiclesPage() {
             <thead><tr><th>Registration</th><th>Vehicle</th><th>Status</th><th>Added</th></tr></thead>
             <tbody>
               {(vehicles || []).map((vh) => (
-                <tr key={vh.id} className="yl-tr">
+                <RowLink key={vh.id} href={`/vehicles/${vh.registration_number}`}>
                   <td><Link href={`/vehicles/${vh.registration_number}`} style={{ textDecoration: "none" }}><PlateBadge reg={vh.registration_number} /></Link></td>
                   <td style={{ color: "var(--text)" }}>{vh.car_name}<div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{vh.year}</div></td>
                   <td><StatusBadge status={vh.status} /></td>
                   <td style={{ color: "var(--text-faint)", fontSize: 12 }}>{new Date(vh.created_at).toLocaleDateString()}</td>
-                </tr>
+                </RowLink>
               ))}
               {(!vehicles || vehicles.length === 0) && <tr><td colSpan={4} className="yl-empty">No vehicles yet — register your first car.</td></tr>}
             </tbody>
