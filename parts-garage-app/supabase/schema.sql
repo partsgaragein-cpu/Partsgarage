@@ -153,7 +153,7 @@ left join (
 create view parts_public as
 select
   id, vehicle_id, name, part_number, category, condition,
-  quantity, expected_price, status, created_at
+  quantity, expected_price, status, created_at, compatible_models
 from parts
 where status in ('Available', 'Reserved') and archived = false;
 
@@ -225,3 +225,31 @@ create policy "Authenticated can insert expenses" on expenses for insert to auth
 create policy "Authenticated can insert invoices" on invoices for insert to authenticated with check (true);
 create policy "Authenticated can update invoices" on invoices for update to authenticated using (true);
 create policy "Authenticated can insert invoice_items" on invoice_items for insert to authenticated with check (true);
+
+-- Deleting is allowed for parts and their photo records only (the client asked to be
+-- able to remove parts by hand). Vehicles, invoices, invoice items and expenses have no
+-- delete policy, so they can't be deleted through the app.
+create policy "Authenticated can delete parts" on parts for delete to authenticated using (true);
+create policy "Authenticated can delete media" on media for delete to authenticated using (true);
+
+-- One all-or-nothing step used by the "Delete this part" button. It refuses if the part
+-- is on an invoice (deleting it would break invoice history and profit figures — archive
+-- it instead), otherwise removes the photo records and then the part. Runs as the
+-- logged-in user, so the policies above are what allow it.
+create or replace function delete_part(p_id text)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if exists (select 1 from invoice_items where part_id = p_id) then
+    raise exception 'This part is on an invoice, so it can''t be deleted. Archive it instead.';
+  end if;
+  delete from media where part_id = p_id;
+  delete from parts where id = p_id;
+end;
+$$;
+
+revoke all on function delete_part(text) from public, anon;
+grant execute on function delete_part(text) to authenticated;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORIES, CONDITIONS, PART_STATUSES, Part, Vehicle } from "@/lib/types";
 import ArchivePartButton from "@/components/ArchivePartButton";
+import DeletePartButton from "@/components/DeletePartButton";
 
 export default function EditPartForm({ part, vehicles }: { part: Part & { vehicles?: { registration_number: string } | null }; vehicles: Vehicle[] }) {
   const router = useRouter();
@@ -112,6 +113,11 @@ export default function EditPartForm({ part, vehicles }: { part: Part & { vehicl
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
+      </div>
+
+      <div style={{ borderTop: "1px dashed var(--border)", marginTop: 20, paddingTop: 16 }}>
+        <div className="yl-mini-label" style={{ marginBottom: 8 }}>Danger zone</div>
+        <DeletePartButton partId={part.id} partName={part.name} />
       </div>
     </div>
   );

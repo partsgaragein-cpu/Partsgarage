@@ -13,7 +13,12 @@ export default function PublicPartCard({
       <div className="yl-row yl-items-center yl-justify-between" style={{ marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{part.name}</div>
-          <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{part.category} · {part.condition}</div>
+          <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+            {part.category} · {part.condition}{part.part_number ? ` · Part no. ${part.part_number}` : ""}
+          </div>
+          {part.compatible_models && (
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>Fits: {part.compatible_models}</div>
+          )}
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)" }}>{inr(part.expected_price)}</div>
       </div>

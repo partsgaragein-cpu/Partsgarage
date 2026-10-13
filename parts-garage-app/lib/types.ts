@@ -36,6 +36,7 @@ export type PublicPart = {
   expected_price: number;
   status: string;
   created_at: string;
+  compatible_models: string | null;
 };
 
 export type Part = {

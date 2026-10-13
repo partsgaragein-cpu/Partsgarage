@@ -12,11 +12,14 @@ A copy of the GitHub repo `partsgaragein-cpu/Partsgarage` (the app lives in the 
 Browser uploads go straight to Backblaze with a presigned URL. Backblaze blocks that unless the bucket's CORS rules allow `s3_put`, and its dashboard presets don't. Fix: log in and open `/api/admin/storage-check?apply=1` on the live site. It sets the rule using the app's own key and runs a real upload/download test; the first lines of the result say what's right or wrong. Open `/api/admin/storage-check` (no `?apply=1`) to just re-check. Upload failures now show their real reason on screen instead of failing silently.
 
 ## Rules the owner set
-- **Nothing is ever deleted** — no delete buttons, FKs are `on delete restrict`, parts are archived not deleted, backups are never removed.
+- **Deleting is limited on purpose.** Parts can be deleted by hand from the part's page (the client asked for this); the `delete_part` database function refuses if the part is on an invoice (archive those instead). Photo *files* stay in the bucket until removed manually in Backblaze. Vehicles, invoices and expenses can't be deleted at all (FKs are `on delete restrict`, no delete policy), and backups are never removed.
 - Sold parts stay in the single `parts` table (hidden by default via the "Show Sold" toggle); `parts_public` view feeds the public inventory and hides `min_price`/`actual_price`.
 
 ## Done in this session
 Public `/inventory` page (cars + standalone parts), photos on parts, part edit/archive/restore with search, vehicle edit form + add-photos on the vehicle page, whole-row click on vehicle/dashboard/parts-of-vehicle tables, Reports (flagged items, best category, tap-to-check stock list), Singapore DB migration, Backblaze private-bucket storage.
+
+## Customer link
+`/inventory` is the page sent to customers. It has a search box: every word typed must match somewhere in a car's name/registration/make/model/year/fuel/transmission, or in a part's name/part number/category/condition/compatible models (plus its car's details). Matching ignores capitals, spaces and dashes. Search runs in code (`lib/search.ts`), never inside a database query.
 
 ## Still open
 - Confirm photo upload works end to end after running the storage check.

@@ -1,6 +1,6 @@
 # Parts Garage — Setup & Deployment
 
-**Deletion policy:** nothing in this system deletes anything automatically — not Supabase rows, not storage files (media or backups), not on any schedule or cascade. Every foreign key uses `on delete restrict`, not `cascade`, so the database itself refuses to remove a vehicle/invoice while parts, media, expenses, or invoice items still point to it. There is also no delete button or delete API route anywhere in the app. If something ever needs to be removed, it has to be done by hand in the Supabase or Backblaze dashboard.
+**Deletion policy:** nothing in this system deletes anything automatically — not Supabase rows, not storage files (media or backups), not on any schedule or cascade. Every foreign key uses `on delete restrict`, not `cascade`, so the database itself refuses to remove a vehicle/invoice while parts, media, expenses, or invoice items still point to it. The one thing that *can* be deleted, by hand, is a **part**: the part's page has a "Delete this part…" button (behind a confirmation step) that removes the part and its photo records. The database refuses if the part has ever been on an invoice — those must be archived instead, so invoice history and profit figures stay correct. The photo *files* stay in the Backblaze bucket until you remove them there by hand, and the daily backups are never deleted. Vehicles, invoices and expenses have no delete option at all.
 
 ## 1. Install dependencies
 
@@ -94,5 +94,4 @@ A successful run returns JSON with the row counts backed up for each table.
 
 This covers the complete core loop (auth, vehicles, media, parts with standalone support, expenses, multi-item GST invoicing with the mark-as-sold toggle, payments, profit tracking, reports). Not yet wired in, worth adding next:
 - `fully_sold_at` is stamped automatically once every part on a vehicle is Sold/Scrap, but nothing acts on it — no media, records, or files are ever deleted automatically. It's purely a status marker for now, useful if you want to build a report or filter by it later.
-- Archive/restore UI for parts (the `archived` column and RLS support it; needs the buttons added)
 - Editing existing vehicles/parts/expenses (currently create + view; edit forms follow the same pattern as the "new" forms)
