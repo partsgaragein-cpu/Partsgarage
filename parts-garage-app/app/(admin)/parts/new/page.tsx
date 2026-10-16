@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadAndRecordMedia } from "@/lib/uploadMedia";
+import { insertPart, partIdPrefix } from "@/lib/partId";
 import { CATEGORIES, CONDITIONS, PART_STATUSES, Vehicle } from "@/lib/types";
 import MediaUploader from "@/components/MediaUploader";
 
@@ -24,6 +25,7 @@ function NewPartForm() {
   const [status, setStatus] = useState("Available"); const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   // Set when the part saved but its photos did not — we stay on the page and say why.
   const [savedPartId, setSavedPartId] = useState("");
   const [uploadError, setUploadError] = useState("");
@@ -38,6 +40,7 @@ function NewPartForm() {
   const handleSave = async () => {
     if (!name || (hasVehicle && !vehicleReg)) return;
     setSaving(true);
+    setSaveError("");
 
     let vehicleId: string | null = null;
     if (hasVehicle) {
@@ -45,16 +48,21 @@ function NewPartForm() {
       vehicleId = match?.id || null;
     }
 
-    const { count } = await supabase.from("parts").select("*", { count: "exact", head: true });
-    const idPrefix = hasVehicle ? vehicleReg.slice(-4) : "LOOSE";
-    const partId = `PG-${idPrefix}-${category.slice(0, 3).toUpperCase()}-${String((count || 0) + 1).padStart(3, "0")}`;
-
-    await supabase.from("parts").insert({
-      id: partId, vehicle_id: vehicleId, name, part_number: partNumber, hsn_sac: hsnSac,
-      compatible_models: compatibleModels, category, condition, quantity,
-      storage_location: location, expected_price: Number(expectedPrice) || 0,
-      min_price: Number(minPrice) || 0, status, notes,
-    });
+    // The part must really be saved before anything else happens (photos, moving on) —
+    // a failed save used to be ignored, which could attach photos to a different part.
+    let partId: string;
+    try {
+      partId = await insertPart(supabase, partIdPrefix(hasVehicle ? vehicleReg : null, category), {
+        vehicle_id: vehicleId, name, part_number: partNumber, hsn_sac: hsnSac,
+        compatible_models: compatibleModels, category, condition, quantity,
+        storage_location: location, expected_price: Number(expectedPrice) || 0,
+        min_price: Number(minPrice) || 0, status, notes,
+      });
+    } catch (e: any) {
+      setSaveError(e?.message || "The part could not be saved.");
+      setSaving(false);
+      return;
+    }
 
     if (files.length > 0) {
       try {
@@ -122,6 +130,8 @@ function NewPartForm() {
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="yl-input" style={{ width: "100%", marginBottom: 16, resize: "vertical" }} />
 
       <MediaUploader files={files} setFiles={setFiles} />
+
+      {saveError && <div style={{ fontSize: 12.5, color: "#E5484D", marginBottom: 12 }}>{saveError}</div>}
 
       {savedPartId ? (
         <div>

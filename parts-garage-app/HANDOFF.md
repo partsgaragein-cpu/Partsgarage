@@ -18,6 +18,9 @@ Browser uploads go straight to Backblaze with a presigned URL. Backblaze blocks 
 ## Done in this session
 Public `/inventory` page (cars + standalone parts), photos on parts, part edit/archive/restore with search, vehicle edit form + add-photos on the vehicle page, whole-row click on vehicle/dashboard/parts-of-vehicle tables, Reports (flagged items, best category, tap-to-check stock list), Singapore DB migration, Backblaze private-bucket storage.
 
+## Part IDs
+Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
+
 ## Customer link
 `/inventory` is the page sent to customers. It has a search box: every word typed must match somewhere in a car's name/registration/make/model/year/fuel/transmission, or in a part's name/part number/category/condition/compatible models (plus its car's details). Matching ignores capitals, spaces and dashes. Search runs in code (`lib/search.ts`), never inside a database query.
 
