@@ -76,67 +76,28 @@ export default function InvoiceForm({ initial }: { initial?: { invoice: any; ite
     }
     setSaving(true);
 
-    const fields = {
+    const invoicePayload = {
       invoice_date: date, buyer_name: buyerName, buyer_phone: buyerPhone, buyer_gstin: buyerGSTIN, buyer_vehicle: buyerVehicle,
       payment_terms: paymentTerms, due_date: dueDate || null, amount_received: received,
       payment_method: received > 0 ? paymentMethod : null, paid_to: received > 0 ? paidTo : null,
     };
-    const itemRow = (it: LineItem) => ({
-      part_id: it.partId, description: it.description, category: it.category, hsn_sac: it.hsnSac,
+    const itemsPayload = items.map((it) => ({
+      id: it.itemId || null, part_id: it.partId, description: it.description, category: it.category, hsn_sac: it.hsnSac,
       qty: it.qty, taxable_value: it.taxableValue, gst_percent: it.gstPercent,
-    });
+    }));
 
-    try {
-      if (!editing) {
-        const { count } = await supabase.from("invoices").select("*", { count: "exact", head: true });
-        const invoiceNo = `PG-${String((count || 0) + 1).padStart(5, "0")}`;
-        const { data: created, error: e1 } = await supabase.from("invoices").insert({ invoice_no: invoiceNo, ...fields }).select().single();
-        if (e1 || !created) throw new Error(`Could not create the invoice: ${e1?.message || "unknown error"}`);
+    // The whole save happens as ONE database step: either everything is saved, or nothing is.
+    const { data, error: rpcError } = editing
+      ? await supabase.rpc("update_invoice", { p_id: inv.id, p_invoice: invoicePayload, p_items: itemsPayload, p_mark_sold: markAsSold })
+      : await supabase.rpc("create_invoice", { p_invoice: invoicePayload, p_items: itemsPayload, p_mark_sold: markAsSold });
 
-        const { error: e2 } = await supabase.from("invoice_items").insert(items.map((it) => ({ invoice_id: created.id, ...itemRow(it) })));
-        if (e2) {
-          alert(`Invoice ${invoiceNo} was created but its parts could not be saved (${e2.message}). Add the parts on the next screen.`);
-          router.push(`/invoices/${created.id}/edit`);
-          return;
-        }
-        if (markAsSold) {
-          await Promise.all(items.map((it) => supabase.from("parts").update({ status: "Sold", actual_price: it.taxableValue * it.qty }).eq("id", it.partId)));
-        }
-        router.push(`/invoices/${created.id}`);
-        return;
-      }
-
-      // ---- editing an existing invoice ----
-      const { error: e1 } = await supabase.from("invoices").update(fields).eq("id", inv.id);
-      if (e1) throw new Error(`Could not save the invoice: ${e1.message}`);
-
-      const keptIds = new Set(items.filter((it) => it.itemId).map((it) => it.itemId));
-      const removed = (initial?.items || []).filter((it) => !keptIds.has(it.id));
-
-      for (const it of items.filter((x) => x.itemId)) {
-        const { error: eu } = await supabase.from("invoice_items").update(itemRow(it)).eq("id", it.itemId!);
-        if (eu) throw new Error(`Could not update "${it.description}": ${eu.message}`);
-      }
-      const fresh = items.filter((x) => !x.itemId);
-      if (fresh.length) {
-        const { error: ei } = await supabase.from("invoice_items").insert(fresh.map((it) => ({ invoice_id: inv.id, ...itemRow(it) })));
-        if (ei) throw new Error(`Could not add the new parts: ${ei.message}`);
-      }
-      if (removed.length) {
-        const { error: ed } = await supabase.from("invoice_items").delete().in("id", removed.map((r) => r.id));
-        if (ed) throw new Error(`Could not remove parts: ${ed.message}`);
-        // parts taken off the invoice go back on the shelf
-        await Promise.all(removed.map((r) => supabase.from("parts").update({ status: "Available", actual_price: null }).eq("id", r.part_id).eq("status", "Sold")));
-      }
-      if (markAsSold) {
-        await Promise.all(items.map((it) => supabase.from("parts").update({ status: "Sold", actual_price: it.taxableValue * it.qty }).eq("id", it.partId)));
-      }
-      router.push(`/invoices/${inv.id}`);
-      router.refresh();
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Nothing more was saved.");
+    if (rpcError || !data) {
+      setError(`Nothing was saved. ${rpcError?.message || "Please try again."}`);
       setSaving(false);
+      return;
     }
+    router.push(`/invoices/${(data as any).id}`);
+    router.refresh();
   };
 
   return (

@@ -24,6 +24,9 @@ Invoices are editable at `/invoices/<id>/edit` (shared form: `components/Invoice
 ## Activity log (who changed what)
 Every add/edit/delete on vehicles, parts, invoices, invoice lines, expenses and media is recorded by database triggers (`supabase/migration-003-activity-log.sql`, applied 2026-10-27) into `activity_log` (read-only from the app). The Activity page (`/activity`) shows it with filters by person and record type. `profiles` maps each login to a display name (user123@gmail.com = Sarthak, user1234@gmail.com = Sunny — assigned arbitrarily; swap in SQL if wrong). Each brother must use his own login. Changes made via SQL show as "System / SQL"; history starts from the day it was switched on.
 
+## Atomic invoice saves and numbering
+Creating/editing an invoice calls the database functions `create_invoice` / `update_invoice` (`supabase/migration-004-atomic-invoices.sql`, applied 2026-10-27). Each runs as one transaction: if any step fails nothing is saved. Invoice numbers (PG-00001…) are generated inside the database under a lock, so simultaneous saves can't collide and failed saves leave no gaps. Don't reintroduce client-side counting or multi-step inserts.
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 
