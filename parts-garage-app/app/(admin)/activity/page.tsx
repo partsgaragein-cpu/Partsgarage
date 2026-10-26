@@ -1,36 +1,110 @@
 import { createClient } from "@/lib/supabase/server";
+import { inr } from "@/lib/types";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+type Row = {
+  id: number; created_at: string; user_name: string; action: "INSERT" | "UPDATE" | "DELETE";
+  table_name: string; record_label: string | null; old_data: any; new_data: any;
+};
+
 const TABLE_LABELS: Record<string, string> = {
   vehicles: "Vehicle", parts: "Part", invoices: "Invoice", invoice_items: "Invoice line", expenses: "Expense", media: "Photo/Video",
 };
+const PRIORITY = ["invoices", "expenses", "vehicles", "parts", "media", "invoice_items"];
+const VERB: Record<string, string> = { INSERT: "Added", UPDATE: "Changed", DELETE: "Deleted" };
+const COLOR: Record<string, string> = { INSERT: "#30A46C", UPDATE: "#F5A524", DELETE: "#E5484D" };
 const SKIP = new Set(["id", "created_at"]);
-const ACTION_STYLE: Record<string, { label: string; color: string }> = {
-  INSERT: { label: "Added", color: "#30A46C" }, UPDATE: { label: "Changed", color: "#F5A524" }, DELETE: { label: "Deleted", color: "#E5484D" },
+const GROUP_GAP_MS = 20000; // steps by the same person within 20s belong to one action
+
+const show = (v: any) => {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v)) return new Date(v).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  return typeof v === "object" ? JSON.stringify(v) : String(v);
 };
+const nice = (k: string) => k.replace(/_/g, " ");
 
-const show = (v: any) => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
+function fieldChanges(r: Row): string[] {
+  if (r.action !== "UPDATE") return [];
+  const o = r.old_data || {}, n = r.new_data || {};
+  return Object.keys(n).filter((k) => !SKIP.has(k) && JSON.stringify(o[k]) !== JSON.stringify(n[k])).map((k) => `${nice(k)}: ${show(o[k])} → ${show(n[k])}`);
+}
 
-function changes(row: any): string[] {
-  if (row.action !== "UPDATE") return [];
-  const o = row.old_data || {}, n = row.new_data || {};
-  return Object.keys(n).filter((k) => !SKIP.has(k) && JSON.stringify(o[k]) !== JSON.stringify(n[k])).map((k) => `${k.replace(/_/g, " ")}: ${show(o[k])} → ${show(n[k])}`);
+// one line per raw database step (shown when a group is expanded)
+function stepText(r: Row): string {
+  const d = r.new_data || r.old_data || {};
+  const extra = r.action === "UPDATE" ? fieldChanges(r).join(", ") : r.table_name === "expenses" && d.amount ? inr(Number(d.amount)) : "";
+  return `${VERB[r.action]} ${TABLE_LABELS[r.table_name] || r.table_name} · ${r.record_label || "—"}${extra ? " — " + extra : ""}`;
+}
+
+function groupRows(rows: Row[]): Row[][] {
+  const groups: Row[][] = [];
+  for (const r of rows) {
+    const g = groups[groups.length - 1];
+    const prev = g && g[g.length - 1];
+    if (g && prev.user_name === r.user_name && new Date(prev.created_at).getTime() - new Date(r.created_at).getTime() <= GROUP_GAP_MS) g.push(r);
+    else groups.push([r]);
+  }
+  return groups;
+}
+
+function headline(g: Row[]): { action: string; title: string; detail: string } {
+  const primary = [...g].sort((a, b) => PRIORITY.indexOf(a.table_name) - PRIORITY.indexOf(b.table_name))[0];
+  const d = primary.new_data || primary.old_data || {};
+  const lines = g.filter((x) => x.table_name === "invoice_items");
+
+  if (primary.table_name === "invoices") {
+    if (primary.action === "INSERT") {
+      const added = lines.filter((l) => l.action === "INSERT");
+      const total = added.reduce((s, l) => s + Number(l.new_data.taxable_value) * Number(l.new_data.qty) * (1 + Number(l.new_data.gst_percent) / 100), 0);
+      const bits = [d.buyer_name, `${added.length} part${added.length === 1 ? "" : "s"}`, added.length ? inr(total) : ""];
+      if (Number(d.amount_received) > 0) bits.push(`received ${inr(Number(d.amount_received))}${d.payment_method ? " by " + d.payment_method : ""}${d.paid_to ? " → " + d.paid_to : ""}`);
+      return { action: "INSERT", title: `Created invoice ${primary.record_label}`, detail: bits.filter(Boolean).join(" · ") };
+    }
+    if (primary.action === "DELETE") return { action: "DELETE", title: `Deleted invoice ${primary.record_label}`, detail: "" };
+    const bits = fieldChanges(primary);
+    const a = lines.filter((l) => l.action === "INSERT").length, rm = lines.filter((l) => l.action === "DELETE").length, ch = lines.filter((l) => l.action === "UPDATE").length;
+    if (a) bits.push(`${a} part${a === 1 ? "" : "s"} added`);
+    if (rm) bits.push(`${rm} part${rm === 1 ? "" : "s"} removed`);
+    if (ch) bits.push(`${ch} line${ch === 1 ? "" : "s"} edited`);
+    return { action: "UPDATE", title: `Edited invoice ${primary.record_label}`, detail: bits.join(" · ") };
+  }
+
+  const label = TABLE_LABELS[primary.table_name]?.toLowerCase() || primary.table_name;
+  const detail = primary.action === "UPDATE" ? fieldChanges(primary).join(" · ") : primary.table_name === "expenses" && d.amount ? inr(Number(d.amount)) : "";
+  return { action: primary.action, title: `${VERB[primary.action]} ${label} ${primary.record_label || ""}`.trim(), detail };
 }
 
 export default async function ActivityPage({ searchParams }: { searchParams: { user?: string; table?: string } }) {
   const supabase = createClient();
-  let q = supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(300);
+  let q = supabase.from("activity_log").select("*").order("created_at", { ascending: false }).limit(500);
   if (searchParams.user) q = q.eq("user_name", searchParams.user);
   if (searchParams.table) q = q.eq("table_name", searchParams.table);
   const [{ data: rows, error }, { data: names }] = await Promise.all([q, supabase.from("activity_log").select("user_name").limit(1000)]);
   const people = Array.from(new Set((names || []).map((r: any) => r.user_name as string))).sort();
+  const groups = groupRows((rows || []) as Row[]);
 
   const chip = (href: string, text: string, active: boolean) => (
     <Link key={href + text} href={href} className={active ? "yl-btn-primary" : "yl-btn-ghost"} style={{ fontSize: 12, padding: "5px 10px" }}>{text}</Link>
   );
   const link = (u?: string, t?: string) => `/activity?${[u ? `user=${encodeURIComponent(u)}` : "", t ? `table=${t}` : ""].filter(Boolean).join("&")}`;
+  const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
+  const Summary = ({ g }: { g: Row[] }) => {
+    const h = headline(g);
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr auto", gap: 12, alignItems: "baseline", padding: "11px 14px" }}>
+        <span style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>{when(g[0].created_at)}</span>
+        <span style={{ color: "var(--text)", fontWeight: 600 }}>{g[0].user_name}</span>
+        <span>
+          <span style={{ color: COLOR[h.action], fontWeight: 600, fontSize: 13 }}>{h.title}</span>
+          {h.detail && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{h.detail}</div>}
+        </span>
+        <span style={{ fontSize: 11.5, color: "var(--text-faint)", whiteSpace: "nowrap" }}>{g.length > 1 ? `${g.length} steps ▾` : ""}</span>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -47,27 +121,22 @@ export default async function ActivityPage({ searchParams }: { searchParams: { u
 
         {error && <div style={{ color: "#E5484D", fontSize: 13, marginBottom: 12 }}>Could not load activity: {error.message}</div>}
 
-        <div className="yl-card yl-table-wrap">
-          <table className="yl-table">
-            <thead><tr><th>When</th><th>Who</th><th>What</th><th>Record</th><th>Details</th></tr></thead>
-            <tbody>
-              {(rows || []).map((r: any) => {
-                const a = ACTION_STYLE[r.action];
-                const ch = changes(r);
-                return (
-                  <tr key={r.id} className="yl-tr" style={{ cursor: "default", verticalAlign: "top" }}>
-                    <td style={{ fontSize: 12, color: "var(--text-faint)", whiteSpace: "nowrap" }}>{new Date(r.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</td>
-                    <td style={{ color: "var(--text)", fontWeight: 500 }}>{r.user_name}</td>
-                    <td><span style={{ color: a.color, fontWeight: 600, fontSize: 12 }}>{a.label}</span> <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{TABLE_LABELS[r.table_name] || r.table_name}</span></td>
-                    <td style={{ color: "var(--text)", fontSize: 12.5 }}>{r.record_label || "—"}</td>
-                    <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{ch.length ? ch.map((c, i) => <div key={i}>{c}</div>) : "—"}</td>
-                  </tr>
-                );
-              })}
-              {(!rows || rows.length === 0) && <tr><td colSpan={5} className="yl-empty">No activity recorded yet. Changes made from now on will appear here.</td></tr>}
-            </tbody>
-          </table>
+        <div className="yl-card" style={{ overflowX: "auto" }}>
+          {groups.map((g) => (
+            <div key={g[0].id} style={{ borderBottom: "1px solid var(--border)", minWidth: 560 }}>
+              {g.length > 1 ? (
+                <details>
+                  <summary style={{ cursor: "pointer", listStyle: "none" }}><Summary g={g} /></summary>
+                  <div style={{ padding: "2px 14px 12px 224px", fontSize: 12, color: "var(--text-muted)" }}>
+                    {[...g].reverse().map((r) => <div key={r.id} style={{ padding: "2px 0" }}>• {stepText(r)}</div>)}
+                  </div>
+                </details>
+              ) : <Summary g={g} />}
+            </div>
+          ))}
+          {groups.length === 0 && <div className="yl-empty" style={{ padding: 24 }}>No activity recorded yet. Changes made from now on will appear here.</div>}
         </div>
+        <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 10 }}>Steps by the same person within a few seconds are grouped into one action. Tap a line with "steps" to see each change.</div>
       </div>
     </div>
   );
