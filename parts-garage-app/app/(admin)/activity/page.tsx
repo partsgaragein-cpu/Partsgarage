@@ -85,6 +85,21 @@ export default async function ActivityPage({ searchParams }: { searchParams: { u
   const people = Array.from(new Set((names || []).map((r: any) => r.user_name as string))).sort();
   const groups = groupRows((rows || []) as Row[]);
 
+  // "Latest" strip: most recent thing of each kind, and who did it
+  const { data: recent } = await supabase.from("activity_log").select("*").in("table_name", ["invoices", "vehicles", "parts", "expenses"]).order("created_at", { ascending: false }).limit(300);
+  const rec = (recent || []) as Row[];
+  const changedKeys = (r: Row) => Object.keys(r.new_data || {}).filter((k) => JSON.stringify((r.old_data || {})[k]) !== JSON.stringify(r.new_data[k]));
+  const isPayment = (r: Row) => r.action === "UPDATE" && Number((r.old_data || {}).amount_received) !== Number((r.new_data || {}).amount_received);
+  const latest: { label: string; row?: Row }[] = [
+    { label: "Last invoice created", row: rec.find((r) => r.table_name === "invoices" && r.action === "INSERT") },
+    { label: "Last invoice edited", row: rec.find((r) => r.table_name === "invoices" && r.action === "UPDATE" && !isPayment(r)) },
+    { label: "Last payment recorded", row: rec.find((r) => r.table_name === "invoices" && isPayment(r)) },
+    { label: "Last vehicle added", row: rec.find((r) => r.table_name === "vehicles" && r.action === "INSERT") },
+    { label: "Last vehicle edited", row: rec.find((r) => r.table_name === "vehicles" && r.action === "UPDATE" && !changedKeys(r).every((k) => k === "fully_sold_at")) },
+    { label: "Last part added", row: rec.find((r) => r.table_name === "parts" && r.action === "INSERT") },
+    { label: "Last expense added", row: rec.find((r) => r.table_name === "expenses" && r.action === "INSERT") },
+  ];
+
   const chip = (href: string, text: string, active: boolean) => (
     <Link key={href + text} href={href} className={active ? "yl-btn-primary" : "yl-btn-ghost"} style={{ fontSize: 12, padding: "5px 10px" }}>{text}</Link>
   );
@@ -110,6 +125,16 @@ export default async function ActivityPage({ searchParams }: { searchParams: { u
     <div>
       <div className="yl-topbar"><h1 className="yl-display yl-fw-600" style={{ fontSize: 18, color: "var(--text)", marginLeft: 30 }}>Activity</h1></div>
       <div className="yl-page">
+        <div className="yl-card" style={{ padding: "12px 14px", marginBottom: 16 }}>
+          <div style={{ fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>Latest</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "6px 20px", fontSize: 12.5 }}>
+            {latest.map((l) => (
+              <div key={l.label} style={{ color: "var(--text-muted)" }}>
+                {l.label}: {l.row ? <><b style={{ color: "var(--text)" }}>{l.row.user_name}</b>{l.row.record_label ? ` · ${l.row.record_label}` : ""} <span style={{ color: "var(--text-faint)" }}>({when(l.row.created_at)})</span></> : <span style={{ color: "var(--text-faint)" }}>—</span>}
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="yl-row yl-gap-2" style={{ flexWrap: "wrap", marginBottom: 10 }}>
           {chip(link(undefined, searchParams.table), "Everyone", !searchParams.user)}
           {people.map((p) => chip(link(p, searchParams.table), p, searchParams.user === p))}

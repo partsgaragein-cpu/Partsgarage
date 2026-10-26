@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AddPartMedia from "./AddPartMedia";
 import { signMedia } from "@/lib/storage";
+import LastChanged from "@/components/LastChanged";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function PartDetailPage({ params }: { params: { id: string 
       <div className="yl-page" style={{ maxWidth: 720 }}>
         <Link href="/parts" className="yl-link-btn" style={{ display: "inline-block", marginBottom: 16 }}>← Back to parts</Link>
         <div className="yl-mono" style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 12 }}>{part.id}</div>
+        <div style={{ marginBottom: 12 }}><LastChanged table="parts" id={part.id} /></div>
 
         <EditPartForm part={part} vehicles={vehicles || []} />
 
