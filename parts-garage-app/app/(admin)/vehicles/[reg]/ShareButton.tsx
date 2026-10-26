@@ -1,15 +1,15 @@
 "use client";
 
-export default function ShareButton({ reg, name }: { reg: string; name: string }) {
-  const handleShare = () => {
-    const link = `${window.location.origin}/car/${reg}`;
-    const text = encodeURIComponent(`Parts available for ${name} (${reg}): ${link}`);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  };
+import SharePanel from "@/components/SharePanel";
 
+export default function ShareButton({ reg, name }: { reg: string; name: string }) {
   return (
-    <button onClick={handleShare} className="yl-btn-whatsapp">
-      Share Gallery Link
-    </button>
+    <SharePanel
+      label="Share Gallery Link"
+      title="Share this car"
+      description="A link to this car's photos and the parts available from it."
+      path={`/car/${reg}`}
+      message={`Parts available for ${name} (${reg}): {link}`}
+    />
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/Badges";
 import { inr } from "@/lib/types";
 import Link from "next/link";
+import RowLink from "@/components/RowLink";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,12 @@ export default async function InvoicesPage() {
       <div className="yl-page">
         <div className="yl-card yl-table-wrap">
           <table className="yl-table">
-            <thead><tr><th>Invoice No.</th><th>Date</th><th>Buyer</th><th>Items</th><th>Grand Total</th><th>Due</th><th>Status</th></tr></thead>
+            <thead><tr><th>Invoice No.</th><th>Date</th><th>Buyer</th><th>Items</th><th>Grand Total</th><th>Due</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {(invoices || []).map((inv: any) => {
                 const t = totals(inv);
                 return (
-                  <tr key={inv.id} className="yl-tr" style={{ cursor: "default" }}>
+                  <RowLink key={inv.id} href={`/invoices/${inv.id}`}>
                     <td className="yl-mono" style={{ fontSize: 12.5, color: "var(--text)" }}><Link href={`/invoices/${inv.id}`} style={{ color: "inherit", textDecoration: "none" }}>{inv.invoice_no}</Link></td>
                     <td style={{ fontSize: 12, color: "var(--text-faint)" }}>{inv.invoice_date}</td>
                     <td style={{ color: "var(--text)" }}>{inv.buyer_name}</td>
@@ -43,10 +44,11 @@ export default async function InvoicesPage() {
                     <td style={{ color: "var(--text)", fontWeight: 500 }}>{inr(t.grandTotal)}</td>
                     <td style={{ color: t.due > 0 ? "#E5484D" : "var(--text-faint)" }}>{t.due > 0 ? inr(t.due) : "—"}</td>
                     <td><StatusBadge status={t.status} /></td>
-                  </tr>
+                    <td><Link href={`/invoices/${inv.id}/edit`} className="yl-link-btn" style={{ fontSize: 12 }}>Edit</Link></td>
+                  </RowLink>
                 );
               })}
-              {(!invoices || invoices.length === 0) && <tr><td colSpan={7} className="yl-empty">No invoices yet.</td></tr>}
+              {(!invoices || invoices.length === 0) && <tr><td colSpan={8} className="yl-empty">No invoices yet.</td></tr>}
             </tbody>
           </table>
         </div>

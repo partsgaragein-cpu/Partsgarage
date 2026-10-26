@@ -20,7 +20,10 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     <div style={{ minHeight: "100vh", background: "var(--bg-public)" }}>
       <div className="no-print yl-row yl-items-center yl-justify-between" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
         <a href="/invoices" className="yl-link-btn">← Back</a>
-        <PrintButton />
+        <div className="yl-row yl-gap-2">
+          <a href={`/invoices/${invoice.id}/edit`} className="yl-btn-ghost">Edit Invoice</a>
+          <PrintButton />
+        </div>
       </div>
 
       <div className="yl-invoice-print" style={{ maxWidth: 720, margin: "0 auto", padding: 28, background: "#fff", color: "#111", fontSize: 12.5 }}>
@@ -77,6 +80,8 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <div style={{ fontWeight: 700, marginBottom: 6 }}>PAYMENT SUMMARY</div>
           <div className="yl-row yl-justify-between"><span>Grand Total Amount</span><strong>{inr(grandTotal)}</strong></div>
           <div className="yl-row yl-justify-between"><span>Amount Received</span><span>{inr(invoice.amount_received)}</span></div>
+          {invoice.amount_received > 0 && invoice.payment_method && <div className="yl-row yl-justify-between"><span>Paid By</span><span>{invoice.payment_method}</span></div>}
+          {invoice.amount_received > 0 && invoice.paid_to && <div className="yl-row yl-justify-between"><span>Paid To</span><span>{invoice.paid_to}</span></div>}
           <div className="yl-row yl-justify-between"><span>Due Amount</span><span>{inr(due)}</span></div>
           <div className="yl-row yl-justify-between"><span>Due Payment Terms</span><span>{invoice.payment_terms}</span></div>
           <div className="yl-row yl-justify-between"><span>Due Date</span><span>{invoice.due_date}</span></div>

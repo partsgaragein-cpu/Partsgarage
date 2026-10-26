@@ -81,6 +81,8 @@ export type Invoice = {
   payment_terms: string | null;
   due_date: string | null;
   amount_received: number;
+  payment_method: string | null;
+  paid_to: string | null;
 };
 
 export type InvoiceItem = {
@@ -109,6 +111,8 @@ export const EXPENSE_CATEGORIES = [
 ];
 export const FUEL_TYPES = ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"];
 export const TRANSMISSIONS = ["Manual", "Automatic"];
+export const PAYMENT_METHODS = ["Cash", "Online"];
+export const PAID_TO = ["Sarthak", "Sunny"];
 export const GST_RATES = [0, 5, 12, 18, 28];
 export const PAYMENT_TERMS = ["Due on Delivery", "NET 7 Days", "NET 15 Days", "NET 30 Days"];
 export const TERMS_DAYS: Record<string, number> = {
