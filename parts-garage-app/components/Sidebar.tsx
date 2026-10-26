@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, Car, Wrench, FileText, Wallet, Receipt, TrendingUp, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Car, Wrench, FileText, Wallet, Receipt, TrendingUp, BarChart3, History } from "lucide-react";
 
 const NAV_GROUPS = [
   { label: "Operations", items: [
@@ -22,6 +22,7 @@ const NAV_GROUPS = [
   ]},
   { label: "Insights", items: [
     { href: "/reports", label: "Reports", icon: BarChart3 },
+    { href: "/activity", label: "Activity", icon: History },
   ]},
 ];
 

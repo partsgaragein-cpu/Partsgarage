@@ -21,6 +21,9 @@ Public `/inventory` page (cars + standalone parts), photos on parts, part edit/a
 ## Invoices: editing and payment details
 Invoices are editable at `/invoices/<id>/edit` (shared form: `components/InvoiceForm.tsx`) — buyer details, dates, terms, payment, and adding/removing/re-pricing parts. Parts removed from an invoice go back to Available. Each invoice stores one payment method (Cash/Online) and one received-by (Sarthak/Sunny); both are required whenever an amount received is entered. The whole invoice row on the list opens it. Needs `supabase/migration-002-invoice-edit-and-custom-expenses.sql` (applied to the live DB 2026-10-27; also lets expenses use custom category names via "+ Add my own…").
 
+## Activity log (who changed what)
+Every add/edit/delete on vehicles, parts, invoices, invoice lines, expenses and media is recorded by database triggers (`supabase/migration-003-activity-log.sql`, applied 2026-10-27) into `activity_log` (read-only from the app). The Activity page (`/activity`) shows it with filters by person and record type. `profiles` maps each login to a display name (user123@gmail.com = Sarthak, user1234@gmail.com = Sunny — assigned arbitrarily; swap in SQL if wrong). Each brother must use his own login. Changes made via SQL show as "System / SQL"; history starts from the day it was switched on.
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 
