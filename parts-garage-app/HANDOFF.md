@@ -27,6 +27,9 @@ Every add/edit/delete on vehicles, parts, invoices, invoice lines, expenses and 
 ## Atomic invoice saves and numbering
 Creating/editing an invoice calls the database functions `create_invoice` / `update_invoice` (`supabase/migration-004-atomic-invoices.sql`, applied 2026-10-27). Each runs as one transaction: if any step fails nothing is saved. Invoice numbers (PG-00001…) are generated inside the database under a lock, so simultaneous saves can't collide and failed saves leave no gaps. Don't reintroduce client-side counting or multi-step inserts.
 
+## Deleting invoices and cars
+Invoice and car pages have a guarded "Delete…" button (confirmation step) calling `delete_invoice` / `delete_vehicle` (`supabase/migration-005-delete-invoice-and-vehicle.sql`, applied 2026-10-27). Deleting an invoice removes its lines and returns its parts to Available. A car can only be deleted once none of its parts is on an invoice; its parts, photo records and expenses go with it (photo files stay in Backblaze). Every deletion is kept in the Activity log with the old data. If the latest invoice is deleted, its number is reused by the next one.
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 

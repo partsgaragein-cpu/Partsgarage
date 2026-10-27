@@ -8,6 +8,7 @@ import AddVehicleMedia from "./AddVehicleMedia";
 import EditVehicleForm from "@/components/EditVehicleForm";
 import RowLink from "@/components/RowLink";
 import LastChanged from "@/components/LastChanged";
+import DeleteVehicleButton from "@/components/DeleteVehicleButton";
 import { signMedia } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export default async function VehicleDetailPage({ params }: { params: { reg: str
       <div className="yl-page">
         <Link href="/vehicles" className="yl-link-btn" style={{ display: "inline-block", marginBottom: 16 }}>← Back to vehicles</Link>
         <div style={{ marginBottom: 12 }}><LastChanged table="vehicles" id={vehicle.id} /></div>
+        <div style={{ marginBottom: 14 }}><DeleteVehicleButton vehicleId={vehicle.id} reg={vehicle.registration_number} /></div>
 
         <div className="yl-card" style={{ padding: "20px 22px", marginBottom: 16 }}>
           <div className="yl-row yl-items-center yl-justify-between" style={{ flexWrap: "wrap", gap: 16, marginBottom: 16 }}>

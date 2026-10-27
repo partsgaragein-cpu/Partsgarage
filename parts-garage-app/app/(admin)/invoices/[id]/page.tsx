@@ -3,6 +3,7 @@ import { COMPANY, inr } from "@/lib/types";
 import { notFound } from "next/navigation";
 import PrintButton from "./PrintButton";
 import LastChanged from "@/components/LastChanged";
+import DeleteInvoiceButton from "@/components/DeleteInvoiceButton";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
         </div>
       </div>
       <div className="no-print" style={{ padding: "8px 20px", borderBottom: "1px solid var(--border)" }}><LastChanged table="invoices" id={invoice.id} /></div>
+      <div className="no-print" style={{ padding: "10px 20px" }}><DeleteInvoiceButton invoiceId={invoice.id} invoiceNo={invoice.invoice_no} /></div>
 
       <div className="yl-invoice-print" style={{ maxWidth: 720, margin: "0 auto", padding: 28, background: "#fff", color: "#111", fontSize: 12.5 }}>
         <div className="yl-row yl-items-center yl-justify-between" style={{ marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
