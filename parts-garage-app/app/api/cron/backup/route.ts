@@ -3,14 +3,23 @@ import { createClient } from "@supabase/supabase-js";
 import { putObject } from "@/lib/storage";
 
 // Every table that has to survive a "someone fat-fingered a delete" day.
-const TABLES = [
-  "vehicles",
-  "media",
-  "parts",
-  "expenses",
-  "invoices",
-  "invoice_items",
-] as const;
+// Each entry: table name + the column used to keep paging order stable.
+const TABLES: { name: string; orderBy: string }[] = [
+  { name: "vehicles", orderBy: "id" },
+  { name: "media", orderBy: "id" },
+  { name: "parts", orderBy: "id" },
+  { name: "expenses", orderBy: "id" },
+  { name: "invoices", orderBy: "id" },
+  { name: "invoice_items", orderBy: "id" },
+  { name: "activity_log", orderBy: "id" },
+  { name: "profiles", orderBy: "user_id" },
+];
+
+// Supabase returns at most 1,000 rows per request and does NOT warn when it cuts a result off,
+// so every table is read in pages until a page comes back short.
+const PAGE_SIZE = 1000;
+
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   // Vercel Cron sends this exact header on every scheduled call. Checking it
@@ -31,13 +40,32 @@ export async function GET(req: NextRequest) {
   const backup: Record<string, unknown> = { taken_at: new Date().toISOString() };
   const errors: string[] = [];
 
-  for (const table of TABLES) {
-    const { data, error } = await supabase.from(table).select("*");
-    if (error) {
-      errors.push(`${table}: ${error.message}`);
+  for (const { name, orderBy } of TABLES) {
+    const rows: unknown[] = [];
+    let failed = false;
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase.from(name).select("*").order(orderBy).range(from, from + PAGE_SIZE - 1);
+      if (error) {
+        errors.push(`${name}: ${error.message}`);
+        failed = true;
+        break;
+      }
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    if (failed) continue;
+
+    // Safety check: the number of rows saved must equal the number of rows in the table.
+    const { count, error: countError } = await supabase.from(name).select("*", { count: "exact", head: true });
+    if (countError) {
+      errors.push(`${name}: could not verify row count (${countError.message})`);
       continue;
     }
-    backup[table] = data;
+    if (count !== null && count !== rows.length) {
+      errors.push(`${name}: saved ${rows.length} rows but the table has ${count}`);
+      continue;
+    }
+    backup[name] = rows;
   }
 
   // If any table failed to read, don't upload a half-complete backup and
@@ -54,13 +82,13 @@ export async function GET(req: NextRequest) {
   const dateStr = new Date().toISOString().split("T")[0]; // e.g. 2026-09-04
   const key = `backups/${dateStr}.json`;
 
-  await putObject(key, JSON.stringify(backup, null, 2), "application/json");
+  await putObject(key, JSON.stringify(backup), "application/json");
 
   return NextResponse.json({
     ok: true,
     backed_up: key,
     row_counts: Object.fromEntries(
-      TABLES.map((t) => [t, (backup[t] as unknown[] | undefined)?.length ?? 0])
+      TABLES.map((t) => [t.name, (backup[t.name] as unknown[] | undefined)?.length ?? 0])
     ),
   });
 }
