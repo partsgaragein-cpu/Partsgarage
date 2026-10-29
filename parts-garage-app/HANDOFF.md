@@ -46,3 +46,6 @@ Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The 
 
 ## Backup route
 `/api/cron/backup` (daily 18:30 UTC = midnight IST) reads every table in pages of 1,000 (Supabase silently caps requests at 1,000 rows), checks each table's saved row count against its real count, and fails loudly on any mismatch instead of uploading a partial backup. Covers vehicles, media, parts, expenses, invoices, invoice_items, activity_log and profiles. Photo/video FILES are not copied — they exist only in the Backblaze bucket. Add new tables to the TABLES list.
+
+## Restore
+See `RESTORE.md` (tested 2026-10-29). `scripts/make-restore-sql.mjs` turns a nightly backup file into one paste-able SQL restore script.

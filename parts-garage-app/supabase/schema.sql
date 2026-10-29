@@ -174,7 +174,10 @@ grant select on sold_parts_ledger to authenticated;
 -- Auto-stamp fully_sold_at when every part on a vehicle is Sold/Scrap
 -- ============================================
 create or replace function check_vehicle_fully_sold()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = public
+as $$
 begin
   update vehicles v
   set fully_sold_at = case
@@ -188,7 +191,7 @@ begin
   where v.id = new.vehicle_id;
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 create trigger trg_check_fully_sold
 after update on parts
