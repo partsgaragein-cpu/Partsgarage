@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadAndRecordMedia } from "@/lib/uploadMedia";
 import MediaUploader from "@/components/MediaUploader";
-import { FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES } from "@/lib/types";
+import CategoryPicker from "@/components/CategoryPicker";
+import { EXPENSE_CATEGORIES, FUEL_TYPES, TRANSMISSIONS, VEHICLE_STATUSES } from "@/lib/types";
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function NewVehiclePage() {
   const [year, setYear] = useState(""); const [status, setStatus] = useState(VEHICLE_STATUSES[0]);
   const [vin, setVin] = useState(""); const [fuelType, setFuelType] = useState(FUEL_TYPES[0]); const [transmission, setTransmission] = useState(TRANSMISSIONS[0]);
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [expCategory, setExpCategory] = useState(EXPENSE_CATEGORIES[0]); const [expAmount, setExpAmount] = useState(""); const [expNote, setExpNote] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -26,19 +28,27 @@ export default function NewVehiclePage() {
     setSaving(true);
     setError("");
 
-    const { data: vehicle, error: insertError } = await supabase
-      .from("vehicles")
-      .insert({
-        registration_number: reg.toUpperCase(),
-        make, model, car_name: `${make} ${model}`.trim(),
-        year, status, vin, fuel_type: fuelType, transmission,
-        purchase_date: purchaseDate || null,
-      })
-      .select()
-      .single();
+    const expenseAmount = Number(expAmount) || 0;
+    if (expenseAmount > 0 && !expCategory.trim()) {
+      setError("Type a name for the expense, or choose a category.");
+      setSaving(false);
+      return;
+    }
+
+    // The car and its first expense are saved together: both succeed or neither does.
+    const { data: created, error: insertError } = await supabase.rpc("create_vehicle_with_expense", {
+      p_vehicle: {
+        registration_number: reg.toUpperCase(), make, model, car_name: `${make} ${model}`.trim(),
+        year, status, vin, fuel_type: fuelType, transmission, purchase_date: purchaseDate || null,
+      },
+      p_expense: expenseAmount > 0
+        ? { category: expCategory.trim(), amount: expenseAmount, expense_date: purchaseDate || null, note: expNote }
+        : null,
+    });
+    const vehicle = created as { id: string; registration_number: string } | null;
 
     if (insertError || !vehicle) {
-      setError(insertError?.message.includes("duplicate") ? "That registration number already exists." : "Something went wrong saving the vehicle.");
+      setError(insertError?.message.includes("duplicate") ? "That registration number already exists." : `Nothing was saved. ${insertError?.message || "Something went wrong."}`);
       setSaving(false);
       return;
     }
@@ -84,6 +94,17 @@ export default function NewVehiclePage() {
         <div className="yl-row yl-gap-3" style={{ marginBottom: 16 }}>
           <div style={{ flex: 1 }}><label className="yl-label">Purchase Date</label><input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="yl-input" style={{ width: "100%" }} /></div>
           <div style={{ flex: 1 }}><label className="yl-label">Status</label><select value={status} onChange={(e) => setStatus(e.target.value)} className="yl-input" style={{ width: "100%" }}>{VEHICLE_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+        </div>
+
+        <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "14px 14px 4px", marginBottom: 16 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>First expense (optional)</div>
+          <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12 }}>For example what you paid for the car. Leave the amount empty to skip. More expenses can be added later from Expenses.</div>
+          <div className="yl-row yl-gap-3" style={{ marginBottom: 12 }}>
+            <div style={{ flex: 1 }}><label className="yl-label">Category</label><CategoryPicker value={expCategory} onChange={setExpCategory} /></div>
+            <div style={{ flex: 1 }}><label className="yl-label">Amount (₹)</label><input type="number" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} className="yl-input" style={{ width: "100%" }} /></div>
+          </div>
+          <label className="yl-label">Note</label>
+          <input value={expNote} onChange={(e) => setExpNote(e.target.value)} className="yl-input" style={{ width: "100%", marginBottom: 12 }} />
         </div>
 
         <MediaUploader files={files} setFiles={setFiles} />

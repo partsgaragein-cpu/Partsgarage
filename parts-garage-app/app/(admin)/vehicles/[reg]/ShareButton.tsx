@@ -9,7 +9,7 @@ export default function ShareButton({ reg, name }: { reg: string; name: string }
       title="Share this car"
       description="A link to this car's photos and the parts available from it."
       path={`/car/${reg}`}
-      message={`Parts available for ${name} (${reg}): {link}`}
+      message={`Parts available for ${name}: {link}`}
     />
   );
 }

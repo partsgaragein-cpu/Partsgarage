@@ -30,6 +30,11 @@ Creating/editing an invoice calls the database functions `create_invoice` / `upd
 ## Deleting invoices and cars
 Invoice and car pages have a guarded "Delete…" button (confirmation step) calling `delete_invoice` / `delete_vehicle` (`supabase/migration-005-delete-invoice-and-vehicle.sql`, applied 2026-10-27). Deleting an invoice removes its lines and returns its parts to Available. A car can only be deleted once none of its parts is on an invoice; its parts, photo records and expenses go with it (photo files stay in Backblaze). Every deletion is kept in the Activity log with the old data. If the latest invoice is deleted, its number is reused by the next one.
 
+## Expenses edit, car + first expense, public inventory
+- Expenses are editable (Edit link on each row; edits appear in Activity). Needs migration 006's update policy.
+- "Register New Car" has an optional "First expense" (category incl. "+ Add my own…", amount, note). It saves through `create_vehicle_with_expense`, so the car and expense are saved together or not at all. `components/CategoryPicker.tsx` is the shared category dropdown.
+- Public pages (/inventory, /car/<reg>) show only car name, year, gearbox and fuel for cars, and no registration number or price anywhere. Photos (`components/MediaGrid.tsx`) open full screen on tap, with swipe/arrows. NOTE: the link itself is still /car/<registration number>, and the database still allows public reads of vehicles/parts_public.
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 

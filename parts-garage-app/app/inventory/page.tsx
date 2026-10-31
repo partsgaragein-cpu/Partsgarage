@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { PlateBadge } from "@/components/Badges";
 import PublicPartCard from "@/components/PublicPartCard";
 import { signMedia } from "@/lib/storage";
 import { matchesAll, parseQuery } from "@/lib/search";
@@ -33,7 +32,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
   const vehById = new Map(vehicles.map((v) => [v.id, v]));
 
   // --- search (done here in code, so what the customer types never goes into a database query) ---
-  const carFields = (v: any) => [v.car_name, v.registration_number, v.make, v.model, v.year, v.fuel_type, v.transmission];
+  const carFields = (v: any) => [v.car_name, v.make, v.model, v.year, v.fuel_type, v.transmission];
   const matchedCars = searching ? vehicles.filter((v) => matchesAll(words, ...carFields(v))) : [];
   const matchedParts = searching
     ? allParts.filter((p) => {
@@ -70,16 +69,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
     mediaByPart.get(m.part_id)!.push(m);
   });
 
-  const partCountByVehicle = new Map<string, number>();
-  allParts.forEach((p) => {
-    if (p.vehicle_id) partCountByVehicle.set(p.vehicle_id, (partCountByVehicle.get(p.vehicle_id) || 0) + 1);
-  });
-
   const tabStyle = (active: boolean): CSSProperties => ({
     flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 7, fontSize: 13, fontWeight: 600,
     textDecoration: "none", background: active ? "var(--accent)" : "var(--surface-2)",
     color: active ? "var(--bg)" : "var(--text-muted)",
   });
+
+  // the only car details shown to customers: year, gearbox, fuel
+  const carDetails = (v: any) => [v.year, v.transmission, v.fuel_type].filter(Boolean).join(" · ");
 
   const carCard = (v: any) => {
     const thumb = (mediaByVehicle.get(v.id) || [])[0];
@@ -99,9 +96,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <PlateBadge reg={v.registration_number} />
-            <div style={{ fontSize: 13.5, color: "var(--text)", marginTop: 4 }}>{v.car_name}</div>
-            <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{partCountByVehicle.get(v.id) || 0} part(s) available</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{v.car_name}</div>
+            <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{carDetails(v)}</div>
           </div>
         </div>
       </Link>
@@ -113,8 +109,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
     const v = p.vehicle_id ? vehById.get(p.vehicle_id) : null;
     return v ? (
       <Link href={`/car/${v.registration_number}`} className="yl-row yl-items-center yl-gap-2" style={{ textDecoration: "none", marginBottom: 6 }}>
-        <PlateBadge reg={v.registration_number} />
-        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{v.car_name} →</span>
+        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{v.car_name}{carDetails(v) ? ` · ${carDetails(v)}` : ""} →</span>
       </Link>
     ) : (
       <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 6 }}>Standalone part (not from a listed car)</div>

@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { PlateBadge } from "@/components/Badges";
 import MediaGrid from "@/components/MediaGrid";
 import PublicPartCard from "@/components/PublicPartCard";
 import { signMedia } from "@/lib/storage";
@@ -44,10 +43,9 @@ export default async function PublicGalleryPage({ params }: { params: { reg: str
           </div>
           <Link href="/inventory" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>View full inventory →</Link>
         </div>
-        <PlateBadge reg={vehicle.registration_number} size="lg" />
-        <div className="yl-display yl-fw-600" style={{ fontSize: 21, color: "var(--text)", marginTop: 12 }}>{vehicle.car_name}</div>
-        <div style={{ fontSize: 12.5, color: "var(--text-faint)", marginBottom: 22 }}>
-          {(media || []).length} photo/video item(s) — call to confirm current stock
+        <div className="yl-display yl-fw-600" style={{ fontSize: 21, color: "var(--text)" }}>{vehicle.car_name}</div>
+        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 4, marginBottom: 22 }}>
+          {[vehicle.year, vehicle.transmission, vehicle.fuel_type].filter(Boolean).join(" · ")}
         </div>
 
         <div style={{ marginBottom: 28 }}>
