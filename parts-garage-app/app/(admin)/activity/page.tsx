@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { inr } from "@/lib/types";
 import Link from "next/link";
+import BackupStatus from "@/components/BackupStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: { u
     <div>
       <div className="yl-topbar"><h1 className="yl-display yl-fw-600" style={{ fontSize: 18, color: "var(--text)", marginLeft: 30 }}>Activity</h1></div>
       <div className="yl-page">
+        <BackupStatus />
         <div className="yl-card" style={{ padding: "12px 14px", marginBottom: 16 }}>
           <div style={{ fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--text-faint)", marginBottom: 8 }}>Latest</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "6px 20px", fontSize: 12.5 }}>

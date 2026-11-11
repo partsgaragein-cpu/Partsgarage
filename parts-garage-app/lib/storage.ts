@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Backblaze B2 speaks the standard S3 API, so we point the AWS SDK at B2's
@@ -50,6 +50,32 @@ export async function createUploadUrl(key: string, contentType: string): Promise
 // Used by the daily backup job (runs on the server, no browser involved).
 export async function putObject(key: string, body: string, contentType: string) {
   await client().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType }));
+}
+
+// Asks the bucket (not our own records) whether a file really exists and how big it is.
+export async function headObject(key: string): Promise<{ size: number } | null> {
+  try {
+    const r = await client().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
+    return { size: Number(r.ContentLength ?? 0) };
+  } catch (err: any) {
+    if (err?.$metadata?.httpStatusCode === 404 || err?.name === "NotFound") return null;
+    throw err;
+  }
+}
+
+export type StoredFile = { key: string; size: number; lastModified: Date };
+
+// Lists the files under a prefix (e.g. "backups/"), newest first. Pages through the whole listing.
+export async function listFiles(prefix: string): Promise<StoredFile[]> {
+  const out: StoredFile[] = [];
+  let token: string | undefined;
+  for (let page = 0; page < 50; page++) {
+    const r = await client().send(new ListObjectsV2Command({ Bucket: bucket(), Prefix: prefix, ContinuationToken: token }));
+    for (const o of r.Contents ?? []) if (o.Key && o.LastModified) out.push({ key: o.Key, size: Number(o.Size ?? 0), lastModified: o.LastModified });
+    if (!r.IsTruncated || !r.NextContinuationToken) break;
+    token = r.NextContinuationToken;
+  }
+  return out.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

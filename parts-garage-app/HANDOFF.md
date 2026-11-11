@@ -41,6 +41,9 @@ Invoice and car pages have a guarded "Delete…" button (confirmation step) call
 ## Deleting expenses
 Each expense row has a Delete link with a confirmation panel. Needs `supabase/migration-007-delete-expenses.sql` (applied). Deleted expenses stay in the Activity log with their old values.
 
+## Backup self-check
+`/api/cron/backup` now retries temporary failures (3 attempts), uploads, then asks Backblaze for the file again and checks it exists at the exact size sent; only then does it count as a success. Optional heartbeat: set `HEALTHCHECK_URL` in Vercel to a Healthchecks.io check URL (schedule "daily", grace ~1 hour) and it pings on success and `<url>/fail` on failure, so you get an email when a night is missed or fails. The Activity page shows a "Last backup" line read straight from the bucket (green under 26 h, red if overdue, grey if the bucket can't be listed — the Backblaze key then needs the *list files* permission).
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 
