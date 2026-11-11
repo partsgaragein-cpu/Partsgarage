@@ -38,6 +38,9 @@ Invoice and car pages have a guarded "Delete…" button (confirmation step) call
 ## Export (CSV)
 `/export` page (sidebar → Export): "Download everything" = ZIP with one CSV per section + README with row counts; or one section (cars, parts, photos list, expenses, invoices, invoice lines, activity log) with an optional date range. Served by `/api/export` (signed-in users only, reads with the user's own permissions, pages past Supabase's 1,000-row cap). CSVs are Excel-friendly (UTF-8 BOM) and neutralise spreadsheet formulas in text. Uses the `fflate` package for the ZIP. This is NOT the backup/restore format (see RESTORE.md).
 
+## Deleting expenses
+Each expense row has a Delete link with a confirmation panel. Needs `supabase/migration-007-delete-expenses.sql` (applied). Deleted expenses stay in the Activity log with their old values.
+
 ## Part IDs
 Format `PG-<last 4 of reg | LOOSE>-<first 3 letters of category>-<number>`. The number is the highest one already used for that prefix plus 1 (`lib/partId.ts`), with a retry if two saves collide and a visible error if saving fails. It used to count rows, which collided with existing IDs as soon as a part was deleted (and the failed save was ignored, so photos could land on the wrong part). Invoice numbers still use a row count, which is safe because invoices can't be deleted.
 

@@ -14,6 +14,7 @@ export default function ExpensesPage() {
   const [vehicleReg, setVehicleReg] = useState(""); const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]); const [editingId, setEditingId] = useState<string | null>(null);
   const [amount, setAmount] = useState(""); const [date, setDate] = useState(""); const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState<any | null>(null); const [deleteError, setDeleteError] = useState(""); const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = async () => {
     const [{ data: e }, { data: v }] = await Promise.all([
@@ -27,6 +28,18 @@ export default function ExpensesPage() {
 
   const resetForm = () => {
     setOpen(false); setEditingId(null); setCategory(EXPENSE_CATEGORIES[0]); setAmount(""); setNote(""); setVehicleReg(""); setDate(""); setError("");
+  };
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true); setDeleteError("");
+    const { data, error: delError } = await supabase.from("expenses").delete().eq("id", deleting.id).select();
+    setDeleteBusy(false);
+    if (delError) { setDeleteError(`Could not delete: ${delError.message}`); return; }
+    if (!data || data.length === 0) { setDeleteError("Nothing was deleted. Please refresh and try again."); return; }
+    if (editingId === deleting.id) resetForm();
+    setDeleting(null);
+    load();
   };
 
   const startEdit = (e: any) => {
@@ -92,6 +105,23 @@ export default function ExpensesPage() {
             </div>
           </div>
         )}
+        {deleting && (
+          <div style={{ background: "rgba(229,72,77,0.08)", border: "1px solid rgba(229,72,77,0.3)", borderRadius: 8, padding: "14px 16px", marginBottom: 16, maxWidth: 520 }}>
+            <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, marginBottom: 6 }}>Permanently delete this expense?</div>
+            <div style={{ fontSize: 12.5, color: "var(--text)", marginBottom: 6 }}>
+              {deleting.category} · {inr(deleting.amount)} · {deleting.expense_date}{deleting.note ? ` · ${deleting.note}` : ""}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>This can&apos;t be undone. A record of the deletion stays in Activity.</div>
+            {deleteError && <div style={{ fontSize: 12.5, color: "#E5484D", marginBottom: 12 }}>{deleteError}</div>}
+            <div className="yl-row yl-gap-2">
+              <button onClick={handleDelete} disabled={deleteBusy} style={{ background: "#E5484D", color: "#fff", fontWeight: 600, fontSize: 13, border: "none", borderRadius: 7, padding: "10px 14px", cursor: deleteBusy ? "default" : "pointer", opacity: deleteBusy ? 0.7 : 1 }}>
+                {deleteBusy ? "Deleting…" : "Yes, delete permanently"}
+              </button>
+              <button onClick={() => { setDeleting(null); setDeleteError(""); }} disabled={deleteBusy} className="yl-btn-ghost">Cancel</button>
+            </div>
+          </div>
+        )}
+
         <div className="yl-card yl-table-wrap">
           <table className="yl-table">
             <thead><tr><th>Date</th><th>Category</th><th>Vehicle</th><th>Amount</th><th>Note</th><th></th></tr></thead>
@@ -103,7 +133,10 @@ export default function ExpensesPage() {
                   <td>{e.vehicles ? <PlateBadge reg={e.vehicles.registration_number} /> : <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>Business-wide</span>}</td>
                   <td style={{ color: "var(--text)", fontWeight: 500 }}>{inr(e.amount)}</td>
                   <td style={{ fontSize: 12, color: "var(--text-faint)" }}>{e.note}</td>
-                  <td><button onClick={() => startEdit(e)} className="yl-link-btn" style={{ fontSize: 12 }}>Edit</button></td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button onClick={() => startEdit(e)} className="yl-link-btn" style={{ fontSize: 12 }}>Edit</button>
+                    <button onClick={() => { setDeleting(e); setDeleteError(""); }} className="yl-link-btn" style={{ fontSize: 12, marginLeft: 12, color: "#E5484D" }}>Delete</button>
+                  </td>
                 </tr>
               ))}
               {expenses.length === 0 && <tr><td colSpan={6} className="yl-empty">No expenses recorded yet.</td></tr>}
